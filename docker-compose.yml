@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: algoviz
+      POSTGRES_PASSWORD: algoviz
+      POSTGRES_DB: algoviz
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://algoviz:algoviz@db:5432/algoviz
+      SECRET_KEY: change-me-in-local-compose
+      FERNET_SECRET_KEY: ${FERNET_SECRET_KEY}
+      FRONTEND_URL: http://localhost:5173
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
