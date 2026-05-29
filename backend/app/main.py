@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import algorithms, auth, keys, share
+from app.routers import algorithms, auth, keys, share, tutor
 
 
 def create_app() -> FastAPI:
@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(keys.router, prefix="/api/v1")
     app.include_router(algorithms.router, prefix="/api/v1")
     app.include_router(share.router, prefix="/api/v1")
+    app.include_router(tutor.router, prefix="/api/v1")
     return app
 
 

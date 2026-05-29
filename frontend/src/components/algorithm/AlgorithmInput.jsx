@@ -7,7 +7,7 @@ import { useVizStore } from '../../store/vizStore.js';
 import ApiKeyInput from './ApiKeyInput.jsx';
 import ModelSelector from './ModelSelector.jsx';
 
-export default function AlgorithmInput({ onCreated }) {
+export default function AlgorithmInput({ onCreated, onSelectionChange }) {
   const [provider, setProvider] = useState('openai');
   const [model, setModel] = useState(llmProviders[0].models[0]);
   const [algorithmText, setAlgorithmText] = useState('Bubble sort an array of numbers');
@@ -18,6 +18,10 @@ export default function AlgorithmInput({ onCreated }) {
   useEffect(() => {
     listApiKeys().then(setKeys).catch(() => setKeys([]));
   }, []);
+
+  useEffect(() => {
+    onSelectionChange?.({ provider, model });
+  }, [provider, model, onSelectionChange]);
 
   function changeProvider(nextProvider) {
     const next = llmProviders.find((item) => item.id === nextProvider);

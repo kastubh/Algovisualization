@@ -37,3 +37,13 @@ async def test_visualize_history_and_share_with_demo_key(client):
     shared = await client.get(f"/api/v1/share/{share.json()['share_token']}")
     assert shared.status_code == 200
     assert shared.json()["title"] == "Bubble Sort Demo"
+
+    tutor = await client.post(
+        f"/api/v1/visualizations/{body['history_id']}/tutor-script",
+        json={"provider": "openai", "model": "gpt-4o-mini", "voice_style": "friendly"},
+        headers=headers,
+    )
+    assert tutor.status_code == 200
+    script = tutor.json()
+    assert script["visualization_id"] == body["history_id"]
+    assert script["steps"][0]["spoken_text"]
