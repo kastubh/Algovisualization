@@ -8,6 +8,8 @@ export default {
         mint: '#2f9c7a',
         coral: '#e45f4f',
         gold: '#d6a437',
+        chalk: '#E8E8D8',
+        board: '#1B4332',
       },
       keyframes: {
         bob: {

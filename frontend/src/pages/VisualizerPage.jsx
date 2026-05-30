@@ -36,16 +36,16 @@ export default function VisualizerPage() {
           <Share2 className="h-4 w-4" />Share
         </button>
       </div>
-      <div className="flex gap-2 border-b border-black/10">
+      <div className="flex border-b border-[var(--color-border)]">
         <button
-          className={`px-4 py-2 text-sm font-semibold ${activeTab === 'visualizer' ? 'border-b-2 border-coral text-coral' : 'text-ink/55'}`}
+          className={`tab-btn ${activeTab === 'visualizer' ? 'active' : ''}`}
           onClick={() => setActiveTab('visualizer')}
           type="button"
         >
           Step Visualizer
         </button>
         <button
-          className={`px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${activeTab === 'tutor' ? 'border-b-2 border-coral text-coral' : 'text-ink/55'}`}
+          className={`tab-btn disabled:cursor-not-allowed disabled:opacity-40 ${activeTab === 'tutor' ? 'active' : ''}`}
           disabled={!vizData || !detail}
           onClick={() => setActiveTab('tutor')}
           type="button"

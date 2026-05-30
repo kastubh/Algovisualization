@@ -47,20 +47,20 @@ export default function AlgorithmInput({ onCreated, onSelectionChange }) {
   const keyHint = keys.find((item) => item.provider === provider)?.key_hint;
 
   return (
-    <form className="panel space-y-5 rounded-md p-5" onSubmit={submit}>
+    <form className="card-raised animate-fade-up space-y-5 p-6" onSubmit={submit}>
       <ModelSelector provider={provider} model={model} onProviderChange={changeProvider} onModelChange={setModel} />
       <ApiKeyInput provider={provider} keyHint={keyHint} onSaved={(saved) => setKeys((current) => [...current.filter((item) => item.provider !== saved.provider), saved])} />
-      <label className="block text-sm font-medium">
+      <label className="field-label">
         Algorithm
         <textarea
-          className="focus-ring mt-1 min-h-40 w-full resize-y border border-black/15 bg-white px-3 py-2"
+          className="textarea-algo focus-ring mt-1"
           maxLength={5000}
           required
           value={algorithmText}
           onChange={(event) => setAlgorithmText(event.target.value)}
         />
       </label>
-      <button className="focus-ring inline-flex items-center gap-2 bg-coral px-4 py-2 font-semibold text-white" disabled={loading} type="submit">
+      <button className="btn-primary focus-ring px-7 py-3 text-[0.95rem]" disabled={loading} type="submit">
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
         Visualize
       </button>

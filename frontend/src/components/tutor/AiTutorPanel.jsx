@@ -1,68 +1,80 @@
-import { Loader2, Undo2, Wand2 } from 'lucide-react';
+import { Loader2, Pause, Play, RotateCcw, SkipBack, SkipForward, Undo2, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { generateTutorScript } from '../../api/tutor.js';
-import { useTutorPlayer } from '../../hooks/useTutorPlayer.js';
-import AvatarAnimator from './AvatarAnimator.jsx';
-import CaptionBar from './CaptionBar.jsx';
-import TutorVideoControls from './TutorVideoControls.jsx';
+import { useBoardOrchestrator } from '../../hooks/useBoardOrchestrator.js';
+import TeacherFigure from './TeacherFigure.jsx';
+import ArrayOnBoard from './board/ArrayOnBoard.jsx';
+import BoardTextWriter from './board/BoardTextWriter.jsx';
+import ChalkBoard from './board/ChalkBoard.jsx';
+import ChalkUnderline from './board/ChalkUnderline.jsx';
+import GraphOnBoard from './board/GraphOnBoard.jsx';
+import TreeOnBoard from './board/TreeOnBoard.jsx';
 
-function SyncedArrayRenderer({ vizData, currentStep }) {
-  const step = vizData?.steps?.[currentStep];
-  const data = step?.state?.data || vizData?.initial_state?.data || [];
-  const max = Math.max(...data, 1);
-  return (
-    <div className="flex h-64 items-end gap-2 border-b border-black/10 px-2 sm:gap-3 sm:px-6">
-      {data.map((value, index) => {
-        const highlighted = step?.highlights?.includes(index);
-        return (
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={`${index}-${value}`}>
-            <div className={`w-full transition-all duration-500 ${highlighted ? 'bg-coral' : 'bg-mint'}`} style={{ height: `${Math.max(24, (value / max) * 220)}px` }} />
-            <span className="text-xs font-semibold">{value}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function SyncedTextRenderer({ vizData, currentStep }) {
-  const step = vizData?.steps?.[currentStep];
-  return (
-    <div className="min-h-64 border border-dashed border-black/15 bg-paper p-4">
-      <h3 className="font-semibold">{step?.title || vizData?.algorithm_name}</h3>
-      <p className="mt-2 text-sm leading-6 text-ink/70">{step?.description || vizData?.description}</p>
-    </div>
-  );
-}
-
-function SyncedRenderer({ vizData, currentStep }) {
-  if (['sorting', 'searching', 'linked_list'].includes(vizData?.algorithm_type)) {
-    return <SyncedArrayRenderer vizData={vizData} currentStep={currentStep} />;
+function BoardVisualization({ boardState, isErasing }) {
+  if (!boardState) return null;
+  if (boardState.algorithmType === 'tree') {
+    return <TreeOnBoard data={boardState.data} highlights={boardState.highlightIndices} />;
   }
-  return <SyncedTextRenderer vizData={vizData} currentStep={currentStep} />;
+  if (boardState.algorithmType === 'graph') {
+    return <GraphOnBoard data={boardState.data} highlights={boardState.highlightIndices} />;
+  }
+  if (Array.isArray(boardState.data)) {
+    return (
+      <ArrayOnBoard
+        array={boardState.data}
+        highlightIndices={boardState.highlightIndices}
+        swapIndices={boardState.swapIndices}
+        pointers={boardState.pointers}
+        isVisible={!isErasing}
+      />
+    );
+  }
+  return (
+    <div className="my-5 border border-white/20 bg-white/5 p-4 text-xl text-chalk">
+      {boardState.descriptionLines?.[0] || 'This step is explained in the transcript below.'}
+    </div>
+  );
+}
+
+function GenerateScriptPrompt({ isGenerating, onGenerate, onRetract }) {
+  return (
+    <section className="card-raised p-5">
+      <div className="mb-4 flex justify-end">
+        <button className="focus-ring inline-flex items-center gap-2 border border-black/15 bg-white px-3 py-2 text-sm font-semibold" onClick={onRetract} type="button">
+          <Undo2 className="h-4 w-4" /> Retract
+        </button>
+      </div>
+      <div
+        className="flex flex-col items-center justify-center gap-4 border border-dashed border-[var(--color-border)] px-6 py-16 text-center"
+        style={{
+          borderRadius: 'var(--radius-xl)',
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(229,65,42,0.05) 0%, transparent 70%)',
+        }}
+      >
+        <div className="text-4xl">AI</div>
+        <div>
+          <p className="font-display mb-2 text-xl font-bold text-[var(--color-text-primary)]">Generate AI Tutor Video</p>
+          <p className="max-w-sm text-sm text-[var(--color-text-secondary)]">
+            Your AI tutor will walk through every step with voice narration and animated explanations on the digital chalkboard.
+          </p>
+        </div>
+        <p className="max-w-md text-center text-sm leading-6 text-ink/65">
+          Generate a YouTube-style chalkboard lesson. The teacher writes each step, points to highlights, and speaks through the algorithm.
+        </p>
+        <button className="btn-primary focus-ring px-8 py-3 text-[0.95rem] disabled:opacity-60" disabled={isGenerating} onClick={onGenerate} type="button">
+          {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+          {isGenerating ? 'Preparing Chalkboard Lesson...' : 'Generate Chalkboard Lesson'}
+        </button>
+      </div>
+    </section>
+  );
 }
 
 export default function AiTutorPanel({ visualizationId, vizData, provider, model, onRetract }) {
   const [tutorScript, setTutorScript] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [syncedStep, setSyncedStep] = useState(0);
-  const player = useTutorPlayer(tutorScript, setSyncedStep);
-  const stepLabel =
-    player.currentStepIndex < 0
-      ? tutorScript?.algorithm_name || vizData?.algorithm_name || 'Ready'
-      : player.currentStepIndex >= (tutorScript?.steps.length || 0)
-        ? 'Summary'
-        : tutorScript?.steps[player.currentStepIndex]?.key_highlight || `Step ${player.currentStepIndex + 1}`;
-  const activeVizStep = vizData?.steps?.[syncedStep];
-  const boardNote = {
-    action: activeVizStep?.action || tutorScript?.steps?.[player.currentStepIndex]?.emphasis_words?.[0] || 'Explain',
-    focus:
-      activeVizStep?.highlights?.length > 0
-        ? `Index ${activeVizStep.highlights.join(', ')}`
-        : tutorScript?.steps?.[player.currentStepIndex]?.key_highlight || 'Current idea',
-    description: activeVizStep?.description || vizData?.description,
-  };
+  const board = useBoardOrchestrator(tutorScript, vizData);
 
   async function handleGenerateScript() {
     if (!visualizationId) return;
@@ -70,7 +82,7 @@ export default function AiTutorPanel({ visualizationId, vizData, provider, model
     try {
       const script = await generateTutorScript(visualizationId, { provider, model, voice_style: 'friendly' });
       setTutorScript(script);
-      toast.success('AI Tutor script ready');
+      toast.success('Chalkboard lesson ready');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Could not generate AI Tutor script');
     } finally {
@@ -79,63 +91,102 @@ export default function AiTutorPanel({ visualizationId, vizData, provider, model
   }
 
   function retract() {
-    player.stop();
+    board.stop();
     onRetract?.();
   }
 
   if (!tutorScript) {
-    return (
-      <section className="panel rounded-md p-5">
-        <div className="mb-4 flex justify-end">
-          <button className="focus-ring inline-flex items-center gap-2 border border-black/15 bg-white px-3 py-2 text-sm font-semibold" onClick={retract} type="button">
-            <Undo2 className="h-4 w-4" /> Retract
-          </button>
-        </div>
-        <div className="flex flex-col items-center justify-center gap-4 py-12">
-          <p className="max-w-md text-center text-sm leading-6 text-ink/65">
-            Generate a spoken AI tutor walkthrough. The current step visualizer stays unchanged in its own tab.
-          </p>
-          <button className="focus-ring inline-flex items-center gap-2 bg-coral px-5 py-3 font-semibold text-white disabled:opacity-60" disabled={isGenerating} onClick={handleGenerateScript} type="button">
-            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-            {isGenerating ? 'Generating Script...' : 'Generate AI Tutor Video'}
-          </button>
-        </div>
-      </section>
-    );
+    return <GenerateScriptPrompt isGenerating={isGenerating} onGenerate={handleGenerateScript} onRetract={retract} />;
   }
 
+  const stepNumber = Math.min(board.currentStepIndex + 1, Math.max(board.totalSteps, 1));
+  const titleKey = `${board.currentStepIndex}-${board.boardState?.topicLabel || ''}`;
+
   return (
-    <section className="panel space-y-5 rounded-md p-5">
+    <section className="card-raised space-y-4 p-4 sm:p-5">
       <div className="flex justify-end">
         <button className="focus-ring inline-flex items-center gap-2 border border-black/15 bg-white px-3 py-2 text-sm font-semibold" onClick={retract} type="button">
           <Undo2 className="h-4 w-4" /> Retract
         </button>
       </div>
-      <div className="space-y-3">
-        <AvatarAnimator
-          isSpeaking={player.isPlaying}
-          name="Alex"
-          currentCaption={player.currentCaption}
-          currentStepLabel={stepLabel}
-          boardNote={boardNote}
+
+      <div className="grid gap-4 lg:grid-cols-[170px_1fr] lg:items-end">
+        <TeacherFigure
+          isSpeaking={board.isSpeaking}
+          pointDirection={board.teacherPointDirection}
+          emotion={board.boardState?.action === 'swap' ? 'excited' : 'neutral'}
         />
-        <CaptionBar text={player.currentCaption || 'Press Start to begin the AI Tutor explanation'} isVisible />
-        <p className="text-center text-xs font-semibold text-ink/45">Total duration ~{Math.max(1, Math.ceil(tutorScript.total_estimated_seconds / 60))} min</p>
+
+        <ChalkBoard isErasing={board.isErasing}>
+          <div className="relative min-h-[360px]">
+            <div className="mb-4 flex flex-wrap items-center gap-3 pr-20">
+              <span className="bg-white/15 px-3 py-1 text-sm font-bold uppercase tracking-widest text-chalk">Topic</span>
+              <BoardTextWriter key={titleKey} text={`${board.boardState?.topicLabel || vizData?.algorithm_name || 'Algorithm'} - Step ${stepNumber} of ${board.totalSteps}`} speed={24} className="text-3xl font-bold" />
+            </div>
+
+            <BoardVisualization boardState={board.boardState} isErasing={board.isErasing} />
+
+            <div className="mt-4 space-y-2">
+              {(board.boardState?.descriptionLines || []).map((line, index) => (
+                <BoardTextWriter key={`${board.currentStepIndex}-${index}-${line}`} text={line} prefix="> " speed={24} delay={index * 350} className="text-2xl" />
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3 text-lg">
+              {board.boardState?.action && (
+                <span className="border border-white/25 px-3 py-1 text-[#86EFAC]">Action: {board.boardState.action}</span>
+              )}
+              {board.boardState?.timeComplexity && (
+                <span className="border border-white/25 px-3 py-1 text-[#86EFAC]">Time {board.boardState.timeComplexity}</span>
+              )}
+              {board.boardState?.spaceComplexity && (
+                <span className="border border-white/25 px-3 py-1 text-[#93C5FD]">Space {board.boardState.spaceComplexity}</span>
+              )}
+            </div>
+            <ChalkUnderline width={160} />
+
+            <div className="absolute right-2 top-2 text-lg text-white/45">Step {stepNumber}/{board.totalSteps}</div>
+          </div>
+        </ChalkBoard>
       </div>
-      <div className="border border-black/10 bg-white p-4">
-        <p className="mb-3 text-xs font-bold uppercase text-ink/45">Live Visualization Synced To Tutor</p>
-        <SyncedRenderer vizData={vizData} currentStep={syncedStep} />
+
+      <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]" style={{ borderRadius: 'var(--radius-lg)' }}>
+        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Teacher Explanation</p>
+        <p className="text-base leading-7 text-[var(--color-text-primary)]">{board.currentCaption || board.boardState?.spokenText || 'Press Play to start the chalkboard explanation.'}</p>
       </div>
-      <TutorVideoControls
-        isPlaying={player.isPlaying}
-        hasStarted={player.hasStarted}
-        onPlay={player.play}
-        onPause={player.pause}
-        onResume={player.resume}
-        onReplay={player.replay}
-        currentStep={player.currentStepIndex}
-        totalSteps={tutorScript.steps.length}
-      />
+
+      <div className="flex flex-col gap-4 border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center sm:justify-between" style={{ borderRadius: 'var(--radius-lg)' }}>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn-secondary focus-ring px-3 py-2 text-sm" onClick={board.prevStep} type="button">
+            <SkipBack className="h-4 w-4" /> Prev
+          </button>
+          {board.isPlaying ? (
+            <button className="focus-ring inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-sidebar)] px-5 py-2 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]" onClick={board.pause} type="button">
+              <Pause className="h-4 w-4" /> Pause
+            </button>
+          ) : board.hasStarted ? (
+            <button className="focus-ring inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-sidebar)] px-5 py-2 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]" onClick={board.resume} type="button">
+              <Play className="h-4 w-4" /> Resume
+            </button>
+          ) : (
+            <button className="btn-primary focus-ring px-5 py-2 text-sm" onClick={board.play} type="button">
+              <Play className="h-4 w-4" /> Play
+            </button>
+          )}
+          <button className="btn-secondary focus-ring px-3 py-2 text-sm" onClick={board.nextStep} type="button">
+            Next <SkipForward className="h-4 w-4" />
+          </button>
+          <button className="btn-secondary focus-ring px-3 py-2 text-sm" onClick={board.replay} type="button">
+            <RotateCcw className="h-4 w-4" /> Replay
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {Array.from({ length: board.totalSteps }).map((_, index) => (
+            <span key={index} className={`step-dot ${index === board.currentStepIndex ? 'current' : index < board.currentStepIndex ? 'done' : ''}`} />
+          ))}
+        </div>
+        <span className="text-sm font-semibold text-ink/45">~{Math.max(1, Math.ceil(tutorScript.total_estimated_seconds / 60))} min</span>
+      </div>
     </section>
   );
 }
